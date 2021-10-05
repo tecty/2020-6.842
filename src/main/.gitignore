@@ -1,0 +1,5 @@
+mr-tmp 
+*.tmp
+mrmaster
+mrsequential
+mrworker

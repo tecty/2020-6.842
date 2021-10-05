@@ -1,15 +1,21 @@
 package mr
 
-import "log"
-import "net"
-import "os"
-import "net/rpc"
-import "net/http"
-
+import (
+	"fmt"
+	"log"
+	"net"
+	"net/http"
+	"net/rpc"
+	"os"
+)
 
 type Master struct {
 	// Your definitions here.
-
+	nWorkers int
+	nCommit  int
+	nReduce  int
+	nExit    int
+	jobs     []string
 }
 
 // Your code here -- RPC handlers for the worker to call.
@@ -24,12 +30,45 @@ func (m *Master) Example(args *ExampleArgs, reply *ExampleReply) error {
 	return nil
 }
 
+func (m *Master) InitWorker(_ *WokerArgs, reply *InitInfoReply) error {
+	reply.NReduce = m.nReduce
+	m.nWorkers++
+	return nil
+}
+
+func (m *Master) FetchJob(_ *WokerArgs, reply *FetchJobReply) error {
+	switch {
+	case len(m.jobs) != 0:
+		reply.Type = Map
+		reply.FileName = m.jobs[len(m.jobs)-1]
+		m.jobs = m.jobs[:len(m.jobs)-1]
+	case m.nCommit != 0:
+		reply.Type = Wait
+	case m.nReduce != 0:
+		m.nReduce--
+		reply.FileName = GetReduceFileName(m.nReduce)
+		reply.Type = Reduce
+	default:
+		reply.Type = Exit
+		m.nExit++
+	}
+	fmt.Printf("master state %+v\n", m)
+
+	return nil
+}
+
+func (m *Master) Commit(_ *WokerArgs, _ *WokerArgs) error {
+	// commit a map to master
+	m.nCommit--
+	return nil
+}
 
 //
 // start a thread that listens for RPCs from worker.go
 //
 func (m *Master) server() {
 	rpc.Register(m)
+
 	rpc.HandleHTTP()
 	//l, e := net.Listen("tcp", ":1234")
 	sockname := masterSock()
@@ -46,12 +85,7 @@ func (m *Master) server() {
 // if the entire job has finished.
 //
 func (m *Master) Done() bool {
-	ret := false
-
-	// Your code here.
-
-
-	return ret
+	return m.nWorkers != 0 && m.nExit == m.nWorkers
 }
 
 //
@@ -60,10 +94,11 @@ func (m *Master) Done() bool {
 // nReduce is the number of reduce tasks to use.
 //
 func MakeMaster(files []string, nReduce int) *Master {
-	m := Master{}
-
-	// Your code here.
-
+	m := Master{
+		jobs:    files,
+		nCommit: len(files),
+		nReduce: nReduce,
+	}
 
 	m.server()
 	return &m

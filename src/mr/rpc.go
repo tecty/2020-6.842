@@ -6,8 +6,38 @@ package mr
 // remember to capitalize all names.
 //
 
-import "os"
-import "strconv"
+import (
+	"fmt"
+	"os"
+	"strconv"
+)
+
+type WorkType int
+
+const (
+	Map WorkType = iota
+	Wait
+	Reduce
+	Exit
+)
+
+func GetReduceFileName(n int) string {
+	return fmt.Sprintf("mr-out-%d", n)
+}
+
+type (
+	// WokerArgs worker doesn't need to  supply any information to master
+	WokerArgs struct{}
+	// InitInfoReply replys nworks only
+	InitInfoReply struct {
+		NReduce int
+	}
+	//FetchJob  reply the current jobs information
+	FetchJobReply struct {
+		Type     WorkType
+		FileName string
+	}
+)
 
 //
 // example to show how to declare the arguments
@@ -23,7 +53,6 @@ type ExampleReply struct {
 }
 
 // Add your RPC definitions here.
-
 
 // Cook up a unique-ish UNIX-domain socket name
 // in /var/tmp, for the master.

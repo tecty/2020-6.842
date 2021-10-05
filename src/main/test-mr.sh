@@ -4,6 +4,7 @@
 # basic map-reduce test
 #
 
+alias timeout="gtimeout"
 RACE=
 
 # uncomment this to run the tests with the Go race detector.
